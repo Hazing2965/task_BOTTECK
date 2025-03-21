@@ -1,0 +1,91 @@
+services:
+  bot_app:
+    build:
+      context: ./bot_app
+      dockerfile: ../bot.Dockerfile
+    image: bot_app:v1
+    env_file: .env
+    container_name: task_project_bot
+    restart: always
+    volumes:
+      - ./media:/app/media
+      - ./logs:/var/log/
+      - ./orders:/app/orders
+    depends_on:
+      - django_app
+      - postgres
+      - redis
+      - nats
+    networks:
+      - project_network
+  
+  django_app:
+    build:
+      context: ./django_app
+      dockerfile: ../django.Dockerfile
+    image: django_app:v1
+    env_file: .env
+    container_name: task_project_django
+    restart: always
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./media:/app/media
+      - ./logs:/var/log/
+    depends_on:
+      - postgres
+      - nats
+      - redis
+    networks:
+      - project_network
+
+  postgres:
+    image: postgres:15
+    container_name: task_project_postgres
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - project_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: task_project_redis
+    restart: always
+    env_file: .env
+    networks:
+      - project_network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:latest
+    container_name: task_project_nats
+    restart: always
+    env_file: .env
+    entrypoint: /nats-server
+    command: "-c /config/server.conf"
+    volumes:
+      - nats_data:/data
+      - ./nats/config:/config
+    networks:
+      - project_network
+
+networks:
+  project_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
