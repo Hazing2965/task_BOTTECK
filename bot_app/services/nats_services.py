@@ -66,7 +66,6 @@ class NATSClient:
 
 
     async def on_message(self, msg: Msg):
-        logger.info(f"on_message: {self.cb_funk}")
         await self.cb_funk(msg, self.payload)
 
     async def start_consumer(self, cb_funk, subject: str, durable_name: str, payload: dict = None):
@@ -98,35 +97,26 @@ class NATSClient:
     
 async def distribut_message(msg: Msg, payload: dict = None):
     bot: Bot = payload['bot']
-    logger.info(f"distribut_message")
     user_id = int(msg.data.decode('utf-8'))
+    logger.info(f"distribut_message: {user_id}")
     id = int(msg.headers['id'])
     try:
-
         info = await det_info_distribut(id)
         if info:
             message = info.get('message')
             image = info.get('photo')
             image_id = info.get('photo_id')
             if image_id:
-                
                 await bot.send_photo(user_id, photo=image_id, caption=message, parse_mode='HTML')
-            if image:
-
-
-
+            elif image:
                 input_file = FSInputFile(path=f'media/{image}')
                 message = await bot.send_photo(user_id, photo=input_file, caption=message, parse_mode='HTML')
                 image_id = message.photo[-1].file_id
                 await update_distribut(id, image_id)
             else:
                 await bot.send_message(user_id, text=message, parse_mode='HTML')
-
-        
     except Exception as e:
         logger.error(f"user_id: {user_id}. Error distribut_message : {e}")
-
-
     await msg.ack()
 
 async def payment_message(msg: Msg, payload: dict = None):

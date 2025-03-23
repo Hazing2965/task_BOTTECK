@@ -9,8 +9,8 @@ logger = logging.getLogger('bot_app'+__name__)
 
 async def shop_main_menu_getter(dialog_manager: DialogManager, **kwargs):
     user_id = dialog_manager.dialog_data.get('user_id') or int(dialog_manager.start_data['user_id'])
+    logger.debug(f'Getting main menu for user_id: {user_id}')
     dialog_manager.dialog_data['user_id'] = user_id
-    # return {}
     info = await get_cart(user_id=user_id)
     is_cart = True if info else False
         

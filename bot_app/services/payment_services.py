@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 import os
 import uuid
@@ -25,6 +26,7 @@ async def get_payment(payload: dict,
                          email='admin@gmail.com',
                          inn=os.getenv('INN')):
     
+    logger.info(f'Creating payment: value={value}, user_id={payload.get("user_id")}, description={description}')
     payment = Payment.create({
         "amount": {
             "value": value,
@@ -60,53 +62,64 @@ async def get_payment(payload: dict,
     return payment.confirmation.confirmation_url, payment.id
 
 async def check_payment_true(bot: Bot, payment: Payment, msg: Msg|None = None):
+    logger.info(f'Processing payment check: {payment}')
+    try:
+        if msg:
+            logger.info(f'this is msg')
+            pay_id = payment['object']['id']
+            amount = Decimal(payment['object']['amount']['value'])
+            amount_net = Decimal(payment['object']['income_amount']['value'])
+            metadata = payment['object']['metadata']
 
-    if msg:
-        pay_id = payment['object']['id']
-        amount = Decimal(payment['object']['amount']['value'])
-        amount_net = Decimal(payment['object']['income_amount']['value'])
-        metadata = payment['object']['metadata']
+            order_id = int(metadata['order_id'])
+            user_id = int(metadata['user_id'])
+            message_id = int(metadata['message_id'])
+        else:
+            logger.info(f'this is not msg')
+            logger.info(f'Processing payment check payment: {payment}')
 
-        order_id = int(metadata['order_id'])
-        user_id = int(metadata['user_id'])
-        message_id = int(metadata['message_id'])
-    else:
-        pay_id = payment.id
-        amount = Decimal(payment.amount.value)
-        amount_net = Decimal(payment.income_amount.value)
-        metadata = payment.metadata
-        order_id = int(metadata.get('order_id'))
-        user_id = int(metadata.get('user_id'))
-        message_id = int(metadata.get('message_id'))
+            pay_id = payment.id
+            amount = Decimal(payment.amount.value)
+            amount_net = Decimal(payment.income_amount.value)
+            metadata = payment.metadata
+            logger.info(f'Processing payment check metadata: {metadata}')
+            order_id = int(metadata.get('order_id'))
+            user_id = int(metadata.get('user_id'))
+            message_id = int(metadata.get('message_id'))
         
+
+        
+
+        info = await get_payment_in_db(pay_id)
+        if info:
+            if msg:
+                await msg.ack()
+            else:
+                await bot.send_message(chat_id=user_id, text='Платёж уже зачислен')
+        else:
+            await save_payment_in_db(pay_id, amount, amount_net, user_id, order_id)
+            await update_order_in_db(order_id)
+
+            # Отправить куда то заказ
+            info = await get_order_in_db(order_id)
+            order_data = info['order_data']
+            address = info['address']
+            total_price = info['total_price']
+
+            await bot.send_message(chat_id=user_id, text=f'Заказ №{order_id} успешно оплачен. Ожидайте доставку.')
+
+            await save_excel(user_id, order_id, order_data, address, total_price)
+
+            if msg:
+                await msg.ack()
+            logger.debug(f'Payment processed successfully: pay_id={pay_id}, user_id={user_id}, order_id={order_id}')
+    except Exception as e:
+        logger.error(f'Error processing payment: user_id={user_id}, error={e}', exc_info=True)
+        raise
 
     try: 
         await bot.delete_message(chat_id=user_id, message_id=message_id)
         logger.debug(f"Удалил сообщение user_id ({user_id}) message_id ({message_id})")
     except Exception as e:
         logger.warning(f"Error delete_message user_id ({user_id}): {e}")
-
-    info = await get_payment_in_db(pay_id)
-    if info:
-        if msg:
-            await msg.ack()
-        else:
-            await bot.send_message(chat_id=user_id, text='Платёж уже зачислен')
-        return
-    else:
-        await save_payment_in_db(pay_id, amount, amount_net, user_id, order_id)
-        await update_order_in_db(order_id)
-
-        # Отправить куда то заказ
-        info = await get_order_in_db(order_id)
-        order_data = info['order_data']
-        address = info['address']
-        total_price = info['total_price']
-
-        await bot.send_message(chat_id=user_id, text=f'Заказ №{order_id} успешно оплачен. Ожидайте доставку.')
-
-        await save_excel(user_id, order_id, order_data, address, total_price)
-
-        if msg:
-            await msg.ack()
 
