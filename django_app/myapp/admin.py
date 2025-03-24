@@ -1,16 +1,19 @@
-
 import os
 import nats
 from django.contrib import admin
 from .models import Cart, Categories, DistributionUser, Payments, SubCategories, Product, UsersBot, Orders
 from asgiref.sync import async_to_sync
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
 class CreateDistribution(admin.ModelAdmin):
     exclude = ('photo_id',)  # Исключаем поле photo_id из формы
 
-    async def send_nats_message(self, obj, user_id_list):
+    async def send_nats_message(self, obj):
+        user_id_list = [user.user_id async for user in UsersBot.objects.all()]
         
         nc = await nats.connect(os.getenv('NATS_URL'))
         js = nc.jetstream()
@@ -31,10 +34,7 @@ class CreateDistribution(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
         if not change:
-            user_id_list = list(UsersBot.objects.values_list('user_id', flat=True))
-            async_to_sync(self.send_nats_message)(obj, user_id_list)
-
-
+            async_to_sync(self.send_nats_message)(obj)
 
 admin.site.register(DistributionUser, CreateDistribution)
 

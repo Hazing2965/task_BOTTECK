@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 # Create your views here.
 
 async def index(request):
+    # Поддержка асинхронных запросов
+    users_id = [user.user_id async for user in UsersBot.objects.all()]
+    logger.info(f'users_id: {users_id}')
     return redirect('/admin/')
 
 @csrf_exempt
