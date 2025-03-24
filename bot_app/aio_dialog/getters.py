@@ -22,7 +22,7 @@ async def shop_categories_getter(dialog_manager: DialogManager, **kwargs):
     sorted_categories = sorted((i['name'], i['id']) for i in info)
     
     # Пагинация
-    items_per_page = 9
+    items_per_page = 6
     total_items = len(sorted_categories)
     total_pages = (total_items + items_per_page - 1) // items_per_page
     
@@ -53,7 +53,7 @@ async def shop_sub_categories_getter(dialog_manager: DialogManager, **kwargs):
         sorted_sub_categories = sorted((i['name'], i['id']) for i in info)
         
         # Пагинация
-        items_per_page = 9
+        items_per_page = 6
         total_items = len(sorted_sub_categories)
         total_pages = (total_items + items_per_page - 1) // items_per_page
         
@@ -86,7 +86,7 @@ async def shop_products_getter(dialog_manager: DialogManager, **kwargs):
         sorted_products = sorted((i['name'], i['id']) for i in info)
         
         # Пагинация
-        items_per_page = 9
+        items_per_page = 6
         total_items = len(sorted_products)
         total_pages = (total_items + items_per_page - 1) // items_per_page
         
@@ -197,14 +197,13 @@ async def shop_faq_getter(dialog_manager: DialogManager, **kwargs):
         is_search = False
 
     # Пагинация
-    items_per_page = 4 # количество вопросов на странице
+    items_per_page = 4 
     total_items = len(filtered_questions)
     total_pages = (total_items + items_per_page - 1) // items_per_page
     dialog_manager.dialog_data['total_pages_faq'] = total_pages
     
     current_page = dialog_manager.dialog_data.get('current_page_faq', 1)
-    logger.info(f'current_page_faq: {current_page}')
-    logger.info(f'total_pages_faq: {total_pages}')
+
     if current_page > total_pages:
         current_page = 1
         dialog_manager.dialog_data['current_page_faq'] = 1

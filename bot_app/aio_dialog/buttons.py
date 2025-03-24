@@ -88,7 +88,6 @@ async def prev_page(callback: CallbackQuery, button: Button, manager: DialogMana
     }
     page_type = page_types.get(button.widget_id, 'current_page')
     current_page = manager.dialog_data.get(page_type, 1)
-    logger.info(f'button.widget_id: {button.widget_id}')
     
     if current_page > 1:
         manager.dialog_data[page_type] = current_page - 1
@@ -103,14 +102,10 @@ async def next_page(callback: CallbackQuery, button: Button, manager: DialogMana
     }
     
     current_key, total_key = page_types.get(button.widget_id)
-    logger.info(f'current_key: {current_key} type: {type(current_key)}')
-    logger.info(f'total_key: {total_key} type: {type(total_key)}')
     
     current_page = manager.dialog_data.get(current_key, 1)
     total_pages = manager.dialog_data.get(total_key, 1)
 
-    logger.info(f'current_page: {current_page}')
-    logger.info(f'total_pages: {total_pages}')
     if current_page < total_pages:
         manager.dialog_data[current_key] = current_page + 1
     await callback.answer()
