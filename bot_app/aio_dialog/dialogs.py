@@ -12,10 +12,8 @@ from aio_dialog.getters import (
     shop_faq_getter, shop_faq_answer_getter
 )
 from aio_dialog.buttons import (
-    category_select, clear_cart, count_select, create_payment, open_catlog_button,
-    product_select, sub_categories_select, prev_page_categories, next_page_categories,
-    prev_page_sub_categories, next_page_sub_categories, prev_page_products, next_page_products,
-    select_faq_question, back_to_faq
+    category_select, clear_cart, clear_search, count_select, create_payment, next_page, open_catlog_button, prev_page,
+    product_select, sub_categories_select, select_faq_question, back_to_faq
 )
 from aio_dialog.services import address_input_correct, count_input_correct, count_input_uncorrect, no_text, search_faq
 from aio_dialog.filters import address_input_check, count_input_check, text_input_check
@@ -84,9 +82,9 @@ shop_dialog = Dialog(
         ),
         width=3),
         Row(
-            Button(Const('<<'), id='prev_page', on_click=prev_page_categories),
+            Button(Const('<<'), id='prev_page', on_click=prev_page),
             Button(Format('{current_page}/{total_pages}'), id='page_number'),
-            Button(Const('>>'), id='next_page', on_click=next_page_categories),
+            Button(Const('>>'), id='next_page', on_click=next_page),
             when=F['is_pagination']
         ),
         SwitchTo(Const('Вернуться'), id='back_to_main_menu', state=ShopState.main_menu),
@@ -109,9 +107,9 @@ shop_dialog = Dialog(
         ),
         width=3, when=F['sub_categories']),
         Row(
-            Button(Const('<<'), id='prev_page', on_click=prev_page_sub_categories),
+            Button(Const('<<'), id='prev_page_sub', on_click=prev_page),
             Button(Format('{current_page}/{total_pages}'), id='page_number'),
-            Button(Const('>>'), id='next_page', on_click=next_page_sub_categories),
+            Button(Const('>>'), id='next_page_sub', on_click=next_page),
             when=F['is_pagination']
         ),
         SwitchTo(Const('Вернуться'), id='back_to_categories', state=ShopState.categories),
@@ -134,9 +132,9 @@ shop_dialog = Dialog(
         ),
         width=3, when=F['products']),
         Row(
-            Button(Const('<<'), id='prev_page', on_click=prev_page_products),
+            Button(Const('<<'), id='prev_page_prod', on_click=prev_page),
             Button(Format('{current_page}/{total_pages}'), id='page_number'),
-            Button(Const('>>'), id='next_page', on_click=next_page_products),
+            Button(Const('>>'), id='next_page_prod', on_click=next_page),
             when=F['is_pagination']
         ),
         SwitchTo(Const('Вернуться'), id='back_to_sub_categories', state=ShopState.sub_categories),
@@ -206,7 +204,13 @@ faq_dialog = Dialog(
             ),
             width=1
         ),
-        
+        Button(Const('Очистить поиск'), id='clear_search', on_click=clear_search, when=F['is_search']),
+        Row(
+            Button(Const('<<'), id='prev_page_faq', on_click=prev_page),
+            Button(Format('{current_page_faq}/{total_pages_faq}'), id='page_number_faq'),
+            Button(Const('>>'), id='next_page_faq', on_click=next_page),
+            when=F['is_pagination']
+        ),
         state=FaqState.faq,
         getter=shop_faq_getter
     ),

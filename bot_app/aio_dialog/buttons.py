@@ -11,7 +11,7 @@ from hanlders.default_handlers import start_command
 from database.database import clear_cart_db, get_product, get_products, insert_cart, save_order
 from aio_dialog.states import FaqState, ShopState
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('bot_app.'+__name__)
 
 async def open_catlog_button(callback: CallbackQuery, widget: Button, dialog_manager: DialogManager):
     info = await get_products()
@@ -79,43 +79,40 @@ async def create_payment(callback: CallbackQuery, widget: Button, dialog_manager
     await clear_cart_db(callback.from_user.id)
     await dialog_manager.done()
 
-async def prev_page_categories(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page', 1)
+async def prev_page(callback: CallbackQuery, button: Button, manager: DialogManager):
+    page_types = {
+        'prev_page': 'current_page',
+        'prev_page_sub': 'current_page_sub',
+        'prev_page_prod': 'current_page_prod',
+        'prev_page_faq': 'current_page_faq'
+    }
+    page_type = page_types.get(button.widget_id, 'current_page')
+    current_page = manager.dialog_data.get(page_type, 1)
+    logger.info(f'button.widget_id: {button.widget_id}')
+    
     if current_page > 1:
-        manager.dialog_data['current_page'] = current_page - 1
+        manager.dialog_data[page_type] = current_page - 1
     await callback.answer()
 
-async def next_page_categories(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page', 1)
-    total_pages = manager.dialog_data.get('total_pages', 1)
+async def next_page(callback: CallbackQuery, button: Button, manager: DialogManager):
+    page_types = {
+        'next_page': ('current_page', 'total_pages'),
+        'next_page_sub': ('current_page_sub', 'total_pages_sub'),
+        'next_page_prod': ('current_page_prod', 'total_pages_prod'),
+        'next_page_faq': ('current_page_faq', 'total_pages_faq')
+    }
+    
+    current_key, total_key = page_types.get(button.widget_id)
+    logger.info(f'current_key: {current_key} type: {type(current_key)}')
+    logger.info(f'total_key: {total_key} type: {type(total_key)}')
+    
+    current_page = manager.dialog_data.get(current_key, 1)
+    total_pages = manager.dialog_data.get(total_key, 1)
+
+    logger.info(f'current_page: {current_page}')
+    logger.info(f'total_pages: {total_pages}')
     if current_page < total_pages:
-        manager.dialog_data['current_page'] = current_page + 1
-    await callback.answer()
-
-async def prev_page_sub_categories(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page_sub', 1)
-    if current_page > 1:
-        manager.dialog_data['current_page_sub'] = current_page - 1
-    await callback.answer()
-
-async def next_page_sub_categories(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page_sub', 1)
-    total_pages = manager.dialog_data.get('total_pages_sub', 1)
-    if current_page < total_pages:
-        manager.dialog_data['current_page_sub'] = current_page + 1
-    await callback.answer()
-
-async def prev_page_products(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page_prod', 1)
-    if current_page > 1:
-        manager.dialog_data['current_page_prod'] = current_page - 1
-    await callback.answer()
-
-async def next_page_products(callback: CallbackQuery, button: Button, manager: DialogManager):
-    current_page = manager.dialog_data.get('current_page_prod', 1)
-    total_pages = manager.dialog_data.get('total_pages_prod', 1)
-    if current_page < total_pages:
-        manager.dialog_data['current_page_prod'] = current_page + 1
+        manager.dialog_data[current_key] = current_page + 1
     await callback.answer()
 
 async def count_select(callback: CallbackQuery, widget: Select, dialog_manager: DialogManager, value: str):
@@ -136,5 +133,10 @@ async def select_faq_question(callback: CallbackQuery, widget: Select, dialog_ma
 
 async def back_to_faq(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
     dialog_manager.dialog_data.pop('search_query', None)
+    await dialog_manager.switch_to(FaqState.faq)
+    await callback.answer()
+
+async def clear_search(callback: CallbackQuery, button: Button, dialog_manager: DialogManager):
+    dialog_manager.dialog_data['search_query'] = ''
     await dialog_manager.switch_to(FaqState.faq)
     await callback.answer()

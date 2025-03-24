@@ -2,9 +2,10 @@ import logging
 from aiogram_dialog import DialogManager
 from aiogram.types import CallbackQuery
 from decimal import Decimal
+from config.config import FAQ_DATA
 from database.database import get_all_products, get_cart, get_categories, get_product, get_products, get_sub_categories
 
-logger = logging.getLogger('bot_app'+__name__)
+logger = logging.getLogger('bot_app.'+__name__)
 
 
 async def shop_main_menu_getter(dialog_manager: DialogManager, **kwargs):
@@ -182,45 +183,7 @@ async def shop_cart_getter(dialog_manager: DialogManager, **kwargs):
     
 
 async def shop_faq_getter(dialog_manager: DialogManager, **kwargs):
-    faq_data = [
-        ("Как сделать заказ?", """
-Чтобы сделать заказ:
-1. Нажмите кнопку "Каталог 🛍️"
-2. Выберите категорию товаров
-3. Выберите подкатегорию
-4. Выберите товар
-5. Укажите количество
-6. Перейдите в корзину
-7. Укажите адрес доставки
-8. Нажмите "Оформить заказ"
-"""),
-        ("Как оплатить?", """
-Оплата заказа производится:
-1. После оформления заказа
-2. Через платежную систему
-3. Банковской картой
-4. Моментальное подтверждение
-"""),
-        ("Сроки доставки?", """
-Сроки доставки зависят от вашего региона:
-- Москва: 1-2 дня
-- Санкт-Петербург: 2-3 дня
-- Другие регионы: 3-7 дней
-"""),
-        ("Возврат товара", """
-Условия возврата:
-1. В течение 14 дней
-2. Товар не был в использовании
-3. Сохранен товарный вид
-4. Имеется чек
-"""),
-        ("Где посмотреть статус?", """
-Отследить статус заказа можно:
-1. В личном кабинете
-2. По номеру заказа
-3. Через службу поддержки
-"""),
-    ]
+    faq_data = FAQ_DATA
     search_query = dialog_manager.dialog_data.get('search_query', '').lower()
     
     if search_query:
@@ -228,18 +191,43 @@ async def shop_faq_getter(dialog_manager: DialogManager, **kwargs):
             (question, answer) for question, answer in faq_data
             if search_query in question.lower()
         ]
+        is_search = True
     else:
         filtered_questions = faq_data
+        is_search = False
+
+    # Пагинация
+    items_per_page = 4 # количество вопросов на странице
+    total_items = len(filtered_questions)
+    total_pages = (total_items + items_per_page - 1) // items_per_page
+    dialog_manager.dialog_data['total_pages_faq'] = total_pages
+    
+    current_page = dialog_manager.dialog_data.get('current_page_faq', 1)
+    logger.info(f'current_page_faq: {current_page}')
+    logger.info(f'total_pages_faq: {total_pages}')
+    if current_page > total_pages:
+        current_page = 1
+        dialog_manager.dialog_data['current_page_faq'] = 1
+    
+    start_idx = (current_page - 1) * items_per_page
+    end_idx = start_idx + items_per_page
+    
+    current_questions = filtered_questions[start_idx:end_idx]
+    is_pagination = total_pages > 1
 
     # Убедимся, что item_id — короткая строка
-    questions = [(q, str(i)) for i, (q, _) in enumerate(filtered_questions)]
+    questions = [(q, str(i)) for i, (q, _) in enumerate(current_questions)]
     
     dialog_manager.dialog_data['faq_answers'] = dict(faq_data)
-    logger.warning(f'questions: {questions}')
+
     
     return {
         'questions': questions,
-        'search_query': search_query or 'Выберите вопрос или начните вводить для поиска'
+        'search_query': search_query or 'Выберите вопрос или начните вводить для поиска',
+        'is_search': is_search,
+        'is_pagination': is_pagination,
+        'current_page_faq': current_page,
+        'total_pages_faq': total_pages
     }
 
 async def shop_faq_answer_getter(dialog_manager: DialogManager, **kwargs):
